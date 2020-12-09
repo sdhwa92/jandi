@@ -1,0 +1,53 @@
+body {
+	background-color: #eee;
+	font-family: "Poppins", sans-serif;
+	font-weight: 300;
+}
+
+.btn {
+  	// border-radius: 25px;
+}
+
+// Colors
+.blue {
+    color: $blue;
+}
+.dark-blue {
+    color: $dark-blue;
+}
+.indigo {
+	color: $indigo;
+}
+.purple {
+	color: $purple;
+}
+.dark-purple {
+	color: $dark-purple;
+}
+.pink {
+	color: $pink;
+}
+.red {
+	color: $red;
+}
+.orange {
+	color: $orange;
+}
+.yellow {
+    color: $yellow
+}
+.green {
+	color: $green;
+}
+.teal {
+	color: $teal;
+}
+.cyan {
+	color: $cyan;
+}
+
+// -- Buttons
+.add-btn {
+  text-align: center;
+  border-radius: 50% !important;
+}
