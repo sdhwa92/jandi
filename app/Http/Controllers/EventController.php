@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use App\Models\Participant;
+use App\Models\Team;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use stdClass;
@@ -50,10 +51,13 @@ class EventController extends Controller
         $eventDetails = $this->_getEventDetails($eventId);
 
         $eventParticipants = $this->_getEventParticipants($eventId);
+
+        $eventTeams = $this->_getEventTeams($eventId);
         // dd($eventDetails);
         return view('event/viewEvent', [
           'eventDetails' => $eventDetails,
           'eventParticipants' => $eventParticipants,
+          'eventTeams' => $eventTeams,
           'isHost' => $this->isHost($eventDetails),
           'eventDefaultData' => $this->_getDefaultEventData($eventDetails),
           'hoursOptions' => self::HOURS,
@@ -120,6 +124,49 @@ class EventController extends Controller
         return redirect()->back();
     }
 
+    
+    /**
+     * Craete new team in the event
+     * @param Request $request
+     * @param int $eventId
+     */
+    public function createTeam(Request $request, $eventId)
+    {
+      $team = new Team();
+      $team->team_name = $request->teamName;
+      $team->event_id = $eventId;
+
+      if(!$team->save()){
+        abort(500, 'Error');
+      }
+
+      return redirect()->route('event.view', [$eventId]);
+    }
+
+    /**
+     * Update participant with a selected team
+     * @param Request $request
+     * @param int $eventId
+     */
+    public function selectTeam(Request $request, $eventId)
+    {
+      foreach($request->input() as $key=>$value){
+        if( !empty($value) && ( "team-participant-" == substr($key,0,17) ) ){
+          // dd(strrpos($key,'-'));
+          $participantId = substr($key,strrpos($key,'-') + 1);
+          $participant = Participant::find($participantId);
+          $participant->team_id = $value;
+
+          if(!$participant->save())
+          {
+            abort(500, 'Failed to update team for participant id ' . $participant->id);
+          }
+        }
+      }
+
+      return redirect()->route('event.view', [$eventId]);
+    }
+
     /**
      * Check if the user is host
      * @param $eventDetails
@@ -154,6 +201,14 @@ class EventController extends Controller
     private function _getEventParticipants($eventId)
     {
         return Participant::Where('event_id', $eventId)->get();
+    }
+
+    /**
+     * Get list of teams from the event
+     */
+    private function _getEventTeams($eventId)
+    {
+      return Team::Where('event_id', $eventId)->get();
     }
 
     /**
