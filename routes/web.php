@@ -23,11 +23,11 @@ Route::get('/event/{eventId}/view', [App\Http\Controllers\EventController::class
 
 // API routes
 Route::post('/event/new', [App\Http\Controllers\CreateEventController::class, 'createNewEvent'])->name('event.new.post');
-Route::post('/event/join', [App\Http\Controllers\EventController::class, 'registerParticipant'])->name('event.join');
+Route::post('/event/{eventId}/join', [App\Http\Controllers\EventController::class, 'registerParticipant'])->name('event.join');
 Route::post('/event/{eventId}', [App\Http\Controllers\EventController::class, 'updateEvent'])->name('event.update');
 Route::post('/event/{eventId}/team/new', [App\Http\Controllers\EventController::class, 'createTeam'])->name('event.team.create');
 Route::post('/event/{eventId}/team', [App\Http\Controllers\EventController::class, 'selectTeam'])->name('event.team.select');
-Route::get('/participant/{participantId}', [App\Http\Controllers\EventController::class, 'deleteParticipant'])->name('event.disjoin');
+Route::get('/event/{eventId}/participant/{participantId}', [App\Http\Controllers\EventController::class, 'deleteParticipant'])->name('event.disjoin');
 
 
 

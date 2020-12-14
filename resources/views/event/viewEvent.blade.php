@@ -32,9 +32,9 @@
                     <div class="register-form-wrapper mt-4">
                       <div class="row">
                           <div class="col-12">
-                              <form action="{{ route('event.join') }}" method="post" enctype="multipart/form-data">
+                              <form action="{{ route('event.join', ['eventId' => $eventDetails->id]) }}" method="post" enctype="multipart/form-data">
                                   @csrf
-                                  <input type="hidden" name="eventId" value="{{ $eventDetails->id }}" />
+                                  {{-- <input type="hidden" name="eventId" value="{{ $eventDetails->id }}" /> --}}
                                   <div class="input-group mb-3">
                                       <input type="text" class="form-control" id="participantName" name="participantName" placeholder="이름">
                                       <div class="input-group-append">
@@ -70,9 +70,9 @@
                                             <span class="badge badge-secondary">대기</span>
                                             @endif
                                         </td>
-                                        <td class="col-team">{{$participant->team}}</td>
+                                        <td class="col-team">{{$participant->team_name}}</td>
                                         <td class="col-action">
-                                            <a href="{{ route('event.disjoin', ['participantId' => $participant->id]) }}" class="btn btn-danger btn-sm disjoin-btn"><i class="fa fa-times"></i></a>
+                                            <a href="{{ route('event.disjoin', ['eventId' => $eventDetails->id, 'participantId' => $participant->id]) }}" class="btn btn-danger btn-sm disjoin-btn"><i class="fa fa-times"></i></a>
                                         </td>
                                     </tr>                            
                                     @php $i++ @endphp
@@ -95,7 +95,7 @@
                   <div class="tab-content">
                     <form action="{{ route('event.team.select', ['eventId' => $eventDetails->id])}}" method="post" enctype="multipart/form-data">
                       @csrf
-                      @foreach ($eventParticipants as $participant)
+                      @foreach ($approvedParticipants as $participant)
                       <div class="form-group row">
                         <label for="inputPassword" class="col-sm-3 col-form-label">{{$participant->name}}</label>
                         <div class="col-sm-9">

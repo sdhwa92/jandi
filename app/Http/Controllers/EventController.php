@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\Participant;
 use App\Models\Team;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use stdClass;
@@ -33,14 +34,29 @@ class EventController extends Controller
       '30',
       '45'
     ];
+
+    protected $_eventDetails;
+
+    protected $_eventParticipants;
+
+    protected $_eventTeams;
+
     /**
      * Create a new controller instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(Request $request)
     {
-		    // $this->middleware('auth');
+        // $this->middleware('auth');
+        $thisEventId = $request->eventId;
+        // dd($eventId);
+
+        $this->_eventDetails = $this->_getEventDetails($thisEventId);
+
+        $this->_eventParticipants = $this->_getEventParticipants($thisEventId);
+
+        $this->_eventTeams = $this->_getEventTeams($thisEventId);
     }
 
     /**
@@ -48,18 +64,13 @@ class EventController extends Controller
      */
     public function renderViewEventPage($eventId)
     {
-        $eventDetails = $this->_getEventDetails($eventId);
-
-        $eventParticipants = $this->_getEventParticipants($eventId);
-
-        $eventTeams = $this->_getEventTeams($eventId);
-        // dd($eventDetails);
         return view('event/viewEvent', [
-          'eventDetails' => $eventDetails,
-          'eventParticipants' => $eventParticipants,
-          'eventTeams' => $eventTeams,
-          'isHost' => $this->isHost($eventDetails),
-          'eventDefaultData' => $this->_getDefaultEventData($eventDetails),
+          'eventDetails' => $this->_eventDetails,
+          'eventParticipants' => $this->_eventParticipants,
+          'approvedParticipants' => $this->_getEventParticipants($this->_eventDetails->id, $this->_eventDetails->max_head),
+          'eventTeams' => $this->_eventTeams,
+          'isHost' => $this->isHost($this->_eventDetails),
+          'eventDefaultData' => $this->_getDefaultEventData($this->_eventDetails),
           'hoursOptions' => self::HOURS,
           'minsOptions' => self::MINS
           ]
@@ -113,10 +124,10 @@ class EventController extends Controller
      * Delete participant
      * @param $participantId
      */
-    public function deleteParticipant($participantId)
+    public function deleteParticipant(Request $request)
     {
-        // dd($participantId);
-        $participant = Participant::find($participantId);
+        // dd($request->participantId);
+        $participant = Participant::find($request->participantId);
         if (!$participant->delete()) {
           abort(500, 'Error');
         }
@@ -145,25 +156,41 @@ class EventController extends Controller
 
     /**
      * Update participant with a selected team
+     * Loop through inputs and get the participant id to update for each input value 
      * @param Request $request
      * @param int $eventId
      */
     public function selectTeam(Request $request, $eventId)
     {
+      $randomList = array();
+
       foreach($request->input() as $key=>$value){
-        if( !empty($value) && ( "team-participant-" == substr($key,0,17) ) ){
+        
+        //-- Any inputs which have a name starting with specific prefix
+        if( ( "team-participant-" == substr($key,0,17) ) )
+        {
           // dd(strrpos($key,'-'));
           $participantId = substr($key,strrpos($key,'-') + 1);
-          $participant = Participant::find($participantId);
-          $participant->team_id = $value;
 
-          if(!$participant->save())
+          //-- 팀이 선택되지 않은 참가자 들의 ID는 ramdomList Array에 추가 시킨다.
+          //-- 팀이 선택된 참가자 들의 경우에는, 참가자 ID를 통해 참가자 instance를 불러온 다음 team_id를 지정해준다.
+          if ( empty($value) ) 
           {
-            abort(500, 'Failed to update team for participant id ' . $participant->id);
+            array_push($randomList, $participantId);
+          }
+          else 
+          {
+            $this->_setTeam($participantId, $value);
           }
         }
       }
 
+      //-- Loop through all participant id contained in the randomList array, and set the team for each id.
+      foreach ($randomList as $participantId)
+      {
+        $this->_setRandomTeam($participantId, $eventId);
+      }
+      
       return redirect()->route('event.view', [$eventId]);
     }
 
@@ -198,9 +225,27 @@ class EventController extends Controller
     /**
      * Get list of participants of the event
      */
-    private function _getEventParticipants($eventId)
+    private function _getEventParticipants($eventId, $limit = null)
     {
-        return Participant::Where('event_id', $eventId)->get();
+        if ($limit)
+        {
+          $participants = DB::table('participants')
+                          ->leftJoin('teams', 'participants.team_id', '=', 'teams.id')
+                          ->select('participants.*', 'teams.team_name')
+                          ->where('participants.event_id', $eventId)
+                          ->limit($limit)
+                          ->get();
+        }
+        else 
+        {
+          $participants = DB::table('participants')
+                        ->leftJoin('teams', 'participants.team_id', '=', 'teams.id')
+                        ->select('participants.*', 'teams.team_name')
+                        ->where('participants.event_id', $eventId)
+                        ->get();
+        }
+
+        return $participants;
     }
 
     /**
@@ -268,5 +313,63 @@ class EventController extends Controller
       $results->memo = $data->memo;
 
       return $results;
+    }
+
+    /**
+     * Function for distributing participants into teams randomly.
+     * It adds participant into the team has the lowest count of team members.
+     * If there are multiple teams having same number of counts, select randomly between them.
+     * 
+     * @param $participantId
+     * @param $eventId
+     */
+    private function _setRandomTeam($participantId, $eventId)
+    {
+      //-- 가장 적은 인원수를 가진 팀부터 한명씩 지정해준다.
+      //-- 만약 가장 적은 인원수를 가진 팀이 여러 팀이라면 그중 아무 팀이나 랜덤하게 지정해준다.
+      $teams = $this->_eventTeams;
+      $teamMemberCounts = array();
+      foreach ( $teams as $team ) 
+      {
+        $teamMembers = Participant::where('event_id', (int)$eventId)->where('team_id', $team->id)->get();
+        $countDetails = (object)array(
+          'teamId' => $team->id,
+          'count' => count($teamMembers)
+        );
+        array_push($teamMemberCounts, $countDetails);
+      }
+
+      $minCount = min(array_column($teamMemberCounts, 'count'));
+
+      $teamsWithMinCount = array_filter($teamMemberCounts, function($teamCount) use ($minCount) {
+        return ($teamCount->count == $minCount);
+      }); 
+
+      $teamsWithMinCountArrayKeys = array();
+
+      if ( count($teamsWithMinCount) > 0 )
+      {
+        $teamsWithMinCountArrayKeys = array_keys($teamsWithMinCount);
+        // dd($teamsWithMinCountArrayKeys);
+        // dd($teamsWithMinCount[$teamsWithMinCountArrayKeys[array_rand($teamsWithMinCountArrayKeys, 1)]]);
+        $selectedTeam = $teamsWithMinCount[$teamsWithMinCountArrayKeys[array_rand($teamsWithMinCountArrayKeys, 1)]];
+        $this->_setTeam($participantId, $selectedTeam->teamId);
+      }
+    }
+
+    /**
+     * Set team id for the given participant id
+     * @param $participantId
+     * @param $teamId
+     */
+    private function _setTeam($participantId, $teamId)
+    {
+      $participant = Participant::find($participantId);
+      $participant->team_id = $teamId;
+
+      if(!$participant->save())
+      {
+        abort(500, 'Failed to update team for participant id ' . $participant->id);
+      }
     }
 }
