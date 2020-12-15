@@ -32,6 +32,11 @@
                     <div class="register-form-wrapper mt-4">
                       <div class="row">
                           <div class="col-12">
+                              @if(session()->has('message.level'))
+                              <div class="alert alert-{{ session('message.level') }}">
+                              {!! session('message.content') !!}
+                              </div>
+                              @endif
                               <form action="{{ route('event.join', ['eventId' => $eventDetails->id]) }}" method="post" enctype="multipart/form-data">
                                   @csrf
                                   {{-- <input type="hidden" name="eventId" value="{{ $eventDetails->id }}" /> --}}
@@ -47,6 +52,11 @@
                     </div>
 
                     <div class="event-participants-wrapper">
+                        @if(session()->has('delete.message'))
+                        <div class="alert alert-danger">
+                        {!! session('delete.message') !!}
+                        </div>
+                        @endif
                         <table class="table table-hover">
                             <thead>
                                 <tr>
@@ -64,10 +74,14 @@
                                         <td class="col-number" scope="row">{{$i}}</td>
                                         <td class="col-name">{{$participant->name}}</td>
                                         <td class="col-state">
-                                            @if ($i <= $eventDetails->max_head)
+                                            @if ($participant->status_id == 1)
                                             <span class="badge badge-primary">참가</span>
-                                            @else
+                                            @elseif ($participant->status_id == 2)
                                             <span class="badge badge-secondary">대기</span>
+                                            @elseif ($participant->status_id == 3)
+                                            <span class="badge badge-success">완료</span>
+                                            @elseif ($participant->status_id == 4)
+                                            <span class="badge badge-success">미납</span>
                                             @endif
                                         </td>
                                         <td class="col-team">{{$participant->team_name}}</td>
@@ -100,7 +114,7 @@
                         <label for="inputPassword" class="col-sm-3 col-form-label">{{$participant->name}}</label>
                         <div class="col-sm-9">
                           <select class="form-control" id="team-participant-{{$participant->id}}" name="team-participant-{{$participant->id}}">
-                            <option value="">랜덤</option>
+                            <option value="">-- 팀 선택 --</option>
                             @foreach ($eventTeams as $team)
                             <option value="{{ $team->id }}" {{ $team->id == $participant->team_id ? 'selected' : '' }}>{{ $team->team_name }}</option>
                             @endforeach
@@ -109,6 +123,7 @@
                       </div>
                       @endforeach
                       <button type="submit" class="btn btn-primary">저장</button>
+                      <button id="randomTeamBtn" type="button" class="btn btn-secondary" data-event-id="{{ $eventDetails->id }}">랜덤</button>
                     </form>
                   </div>
                 </div>

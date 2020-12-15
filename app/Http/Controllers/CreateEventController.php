@@ -57,6 +57,6 @@ class CreateEventController extends Controller
             abort(500, 'Error');
         }
 
-		    return redirect()->route("home");
+		    return redirect()->route("event.view", ['eventId' => $event->id]);
     }
 }

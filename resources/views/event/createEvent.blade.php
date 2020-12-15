@@ -8,21 +8,21 @@
               <form action="{{ route('event.new.post') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="form-group">
-                  <label for="eventName">제목</label>
-                  <input type="text" class="form-control" id="eventName" name="eventName" placeholder="Event title">
+                  <label for="eventName">제목 <span>*</span></label>
+                  <input type="text" class="form-control" id="eventName" name="eventName">
                 </div>
                 <div class="form-group">
-                  <label for="eventAddress">주소</label>
-                  <input type="text" class="form-control" id="eventAddress" name="eventAddress" placeholder="Where">
+                  <label for="eventAddress">주소 <span>*</span></label>
+                  <input type="text" class="form-control" id="eventAddress" name="eventAddress">
                 </div>
                 <div class="form-group">
-                  <label for="eventDate">날짜</label>
-                  <input type="date" class="form-control" id="eventDate" name="eventDate" placeholder="When">
+                  <label for="eventDate">날짜 <span>*</span></label>
+                  <input type="date" class="form-control" id="eventDate" name="eventDate">
                 </div>
                 <div class="row">
                   <div class="col-sm-6">
                     <div class="form-group">
-                      <label>시작 시간</label>
+                      <label>시작 시간 <span>*</span></label>
                       <div class="row">
                         <div class="col-4">
                           <select class="form-control" id="startHour" name="startHour">
@@ -60,7 +60,7 @@
 
                   <div class="col-sm-6">
                     <div class="form-group">
-                      <label>종료 시간</label>
+                      <label>종료 시간 <span>*</span></label>
                       <div class="row">
                         <div class="col-4">
                           <select class="form-control" id="endHour" name="endHour">
@@ -105,7 +105,7 @@
                   </div>
                   <div class="col-sm-6">
                     <div class="form-group">
-                      <label for="maxHead">최대 인원</label>
+                      <label for="maxHead">최대 인원 <span>*</span></label>
                       <input type="number" class="form-control" id="maxHead" name="maxHead" placeholder="Max">
                     </div>
                   </div>

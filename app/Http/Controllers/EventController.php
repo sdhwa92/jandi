@@ -35,6 +35,14 @@ class EventController extends Controller
       '45'
     ];
 
+    //-- Participant's Statuses
+    const STATUS = [
+      'join' => 1,
+      'waiting' => 2,
+      'paid' => 3,
+      'unpaid' => 4
+    ];
+
     protected $_eventDetails;
 
     protected $_eventParticipants;
@@ -67,7 +75,7 @@ class EventController extends Controller
         return view('event/viewEvent', [
           'eventDetails' => $this->_eventDetails,
           'eventParticipants' => $this->_eventParticipants,
-          'approvedParticipants' => $this->_getEventParticipants($this->_eventDetails->id, $this->_eventDetails->max_head),
+          'approvedParticipants' => $this->_getEventParticipants($this->_eventDetails->id, self::STATUS['join']),
           'eventTeams' => $this->_eventTeams,
           'isHost' => $this->isHost($this->_eventDetails),
           'eventDefaultData' => $this->_getDefaultEventData($this->_eventDetails),
@@ -107,14 +115,50 @@ class EventController extends Controller
     public function registerParticipant(Request $request)
     {
         $currentEventId = $request->eventId;
+
+        //-- 현재 참여 인원수를 구한 후 참여자 상태 결정
+        $maxCount = 0;
+        $currentCount = count($this->_getEventParticipants($request->eventId));
+        $status = 1;
+        if ( !empty($this->_eventDetails->max_head) && $this->_eventDetails->max_head > 0)
+        {
+          $maxCount = $this->_eventDetails->max_head;
+          // dd($currentCount);
+
+          $status = $currentCount < $maxCount ? 1 : 2;
+        }
+
+        //-- 이름이 입력되지 않았으면 에러 메세지
+        if (empty($request->participantName))
+        {
+          $request->session()->flash('message.level', 'danger');
+          $request->session()->flash('message.content', '이름을 입력해 주세요.');
+
+          return redirect()->route('event.view', [$currentEventId]);
+        }
+        
         // dd($currentEventId);
         $participant = new Participant();
 
         $participant->event_id = $currentEventId;
         $participant->name = $request->participantName;
+        $participant->status_id = $status;
 
-        if(!$participant->save()){
+        // dd($status);
+        if(!$participant->save())
+        {
           abort(500, 'Error');
+        }
+
+        if ($status == 1) 
+        {
+          $request->session()->flash('message.level', 'success');
+          $request->session()->flash('message.content', '"' .$request->participantName . '"' . ' 님이 추가 되었습니다.');
+        }
+        elseif ($status == 2) 
+        {
+          $request->session()->flash('message.level', 'warning');
+          $request->session()->flash('message.content', '인원 초과로 인해 "' .$request->participantName . '"' . ' 님이 대기 명단에 추가 되었습니다.');
         }
         
         return redirect()->route('event.view', [$currentEventId]);
@@ -131,7 +175,28 @@ class EventController extends Controller
         if (!$participant->delete()) {
           abort(500, 'Error');
         }
-        
+
+        $joinMembers = array();
+        if (!empty($this->_eventDetails->max_head) && $this->_eventDetails->max_head > 0)
+        {
+          $joinMembers = $this->_getEventParticipants($request->eventId, NULL, $this->_eventDetails->max_head);
+        }
+
+        // dd($joinMembers);
+
+        foreach ($joinMembers as $member) 
+        {
+          if ($member->status_id == 2)
+          {
+            if (!Participant::find($member->id)->update(['status_id' => 1]))
+            {
+              abort(500, 'Error');
+            }
+          }
+        }
+
+        $request->session()->flash('delete.message', '"' . $participant->name . '"' . ' 님이 참가를 취소하셨습니다.' );
+
         return redirect()->back();
     }
 
@@ -162,8 +227,6 @@ class EventController extends Controller
      */
     public function selectTeam(Request $request, $eventId)
     {
-      $randomList = array();
-
       foreach($request->input() as $key=>$value){
         
         //-- Any inputs which have a name starting with specific prefix
@@ -172,26 +235,31 @@ class EventController extends Controller
           // dd(strrpos($key,'-'));
           $participantId = substr($key,strrpos($key,'-') + 1);
 
-          //-- 팀이 선택되지 않은 참가자 들의 ID는 ramdomList Array에 추가 시킨다.
-          //-- 팀이 선택된 참가자 들의 경우에는, 참가자 ID를 통해 참가자 instance를 불러온 다음 team_id를 지정해준다.
-          if ( empty($value) ) 
-          {
-            array_push($randomList, $participantId);
-          }
-          else 
-          {
-            $this->_setTeam($participantId, $value);
-          }
+          $this->_setTeam($participantId, $value);
         }
-      }
-
-      //-- Loop through all participant id contained in the randomList array, and set the team for each id.
-      foreach ($randomList as $participantId)
-      {
-        $this->_setRandomTeam($participantId, $eventId);
       }
       
       return redirect()->route('event.view', [$eventId]);
+    }
+
+    /**
+     * Select random team for anyone who joins the game but don't have team yet.
+     * @param Request $request
+     */
+    public function randomSelectTeam(Request $request) 
+    { 
+      $joinMembers = $this->_getEventParticipants($request->eventId, self::STATUS['join']);
+
+      // 참가하는 멤버중 팀이 없으면 랜텀 선택
+      foreach($joinMembers as $member)
+      {
+        if (empty($member->team_id)) 
+        {
+          $this->_setRandomTeam($member->id, $request->eventId);
+        }
+      }
+      
+      return redirect()->route('event.view', [$request->eventId]);
     }
 
     /**
@@ -224,10 +292,22 @@ class EventController extends Controller
 
     /**
      * Get list of participants of the event
+     * @param $eventId
+     * @param $statusId = null
+     * @param $limit = null
      */
-    private function _getEventParticipants($eventId, $limit = null)
+    private function _getEventParticipants($eventId, $statusId = null, $limit = null)
     {
-        if ($limit)
+        if ($statusId)
+        {
+          $participants = DB::table('participants')
+                          ->leftJoin('teams', 'participants.team_id', '=', 'teams.id')
+                          ->select('participants.*', 'teams.team_name')
+                          ->where('participants.event_id', $eventId)
+                          ->where('participants.status_id', $statusId)
+                          ->get();
+        }
+        elseif ($limit)
         {
           $participants = DB::table('participants')
                           ->leftJoin('teams', 'participants.team_id', '=', 'teams.id')
@@ -338,6 +418,8 @@ class EventController extends Controller
         );
         array_push($teamMemberCounts, $countDetails);
       }
+
+      // dd($teamMemberCounts);
 
       $minCount = min(array_column($teamMemberCounts, 'count'));
 
