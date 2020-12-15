@@ -19,7 +19,7 @@ class ParticipantsTable extends Migration
         $table->foreignId('user_id')->nullable()->constrained('users');
         $table->foreignId('team_id')->nullable()->constrained('teams');
         $table->string('name', 100);
-        // $table->integer('team')->nullable();
+        $table->integer('status_id')->constrained('statuses');
         $table->timestamps();
     });
     }

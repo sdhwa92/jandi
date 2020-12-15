@@ -22,7 +22,7 @@ class CreateEventsTable extends Migration
             $table->string('start_time', 10);
             $table->string('end_time', 10);
             $table->smallInteger('min_head')->nullable();
-            $table->smallInteger('max_head')->nullable();
+            $table->smallInteger('max_head');
             $table->string('memo', 255)->nullable();
             $table->bigInteger('created_by');
             $table->timestamps();

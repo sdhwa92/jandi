@@ -15,4 +15,6 @@ class Participant extends Model
      * @var string
      */
     protected $primaryKey = 'id';
+
+    protected $guarded = ['id', 'event_id', 'user_id'];
 }
