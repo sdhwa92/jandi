@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Repositories\EventRepository;
+use App\Repositories\Eloquent\EventRepository;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
