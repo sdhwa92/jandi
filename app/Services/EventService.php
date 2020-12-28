@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Repositories\Eloquent\EventRepository;
+use App\Repositories\Interfaces\EventRepositoryInterface;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,16 +13,16 @@ use InvalidArgumentException;
 class EventService 
 {
   /**
-   * @var Event Repository
+   * @var EventRepository
    */
   protected $eventRepository;
 
   /**
    * EventService Constructor
    * 
-   * @param EventRepository $eventRepository
+   * @param EventRepositoryInterface $eventRepository
    */
-  public function __construct(EventRepository $eventRepository)
+  public function __construct(EventRepositoryInterface $eventRepository)
   {
     $this->eventRepository = $eventRepository;
   }
