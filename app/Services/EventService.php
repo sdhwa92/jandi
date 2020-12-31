@@ -27,11 +27,26 @@ class EventService
     $this->eventRepository = $eventRepository;
   }
 
-  public function createNewEvent($data)
+  /**
+   * Get list of events (Only gets all events at the moment)
+   */
+  public function getEventList()
+  {
+    $dump = $this->eventRepository->all();
+    dd($dump);
+    return $this->eventRepository->all();
+  }
+
+  /**
+   * Create a new event
+   * 
+   * @param $data
+   */
+  public function createEvent($data, $userId)
   {
 
     $data['eventType'] = 1;
-    $data['createdBy'] = Auth::id();
+    $data['createdBy'] = $userId;
 
     $validator = Validator::make($data, [
       'eventName' => 'required',
@@ -53,7 +68,74 @@ class EventService
       throw new InvalidArgumentException($validator->errors()->first());
     }
 
-    $result = $this->eventRepository->createNewEvent($data);
+    //-- Array for mapping attributes
+    $mappedData = array_fill_keys(
+      array(
+        'event_type', 
+        'name', 
+        'address', 
+        'event_date', 
+        'start_time',
+        'end_time',
+        'min_head',
+        'max_head',
+        'memo',
+        'created_by'
+      ), '');
+
+    if ( $data['eventType'] ) 
+    {
+      $mappedData['event_type'] = $data['eventType'];
+    }
+
+    if ( $data['eventName'] )
+    {
+      $mappedData['name'] = $data['eventName'];
+    }
+
+    if ( $data['eventAddress'] )
+    {
+      $mappedData['address'] = $data['eventAddress'];
+    }
+
+    if ( $data['eventDate'] )
+    {
+      $mappedData['event_date'] = $data['eventDate'];
+    }
+
+    if ( $data['startHour'] && $data['startMin'] && $data['startAmPm'] )
+    {
+      $startTime = $data['startHour'] . ':' . $data['startMin'] . ' ' . $data['startAmPm'];
+      $mappedData['start_time'] = $startTime;
+    }
+
+    if ( $data['endHour'] && $data['endMin'] && $data['endAmPm'] )
+    {
+      $endTime = $data['endHour'] . ':' . $data['endMin'] . ' ' . $data['endAmPm'];
+      $mappedData['end_time'] = $endTime;
+    }
+
+    if ( $data['minHead'] )
+    {
+      $mappedData['min_head'] = $data['minHead'];
+    }
+
+    if ( $data['maxHead'] )
+    {
+      $mappedData['max_head'] = $data['maxHead'];
+    }
+
+    if ( $data['eventMemo'] )
+    {
+      $mappedData['memo'] = $data['eventMemo'];
+    }
+
+    if ( $data['createdBy'] )
+    {
+      $mappedData['created_by'] = $data['createdBy'];
+    }
+
+    $result = $this->eventRepository->createEvent($mappedData);
 
     return $result;
   }

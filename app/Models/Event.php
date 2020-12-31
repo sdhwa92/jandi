@@ -15,4 +15,22 @@ class Event extends Model
      * @var string
      */
     protected $primaryKey = 'id';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+      'event_type',
+      'name',
+      'address',
+      'event_date',
+      'start_time',
+      'end_time',
+      'min_head',
+      'max_head',
+      'memo',
+      'created_by'
+    ];
 }

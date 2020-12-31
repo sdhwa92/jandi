@@ -30,12 +30,15 @@ Route::group(['middleware' => 'auth:api'], function(){
 });
 
 // Event APIs
-Route::get('events', [EventController::class, 'getAllEvents']);
-
-Route::post('events', [EventController::class, 'createNewEvent'])->name('event.new.post');
-Route::get('events/{eventId}/view', [EventController::class, 'getEventDetails'])->name('event.details');
-Route::post('events/{eventId}', [EventController::class, 'updateEvent'])->name('event.update');
+Route::get('events', [EventController::class, 'getEventList']);
+Route::group(['middleware' => 'auth:api'], function() {
+  Route::post('events', [EventController::class, 'createEvent'])->name('event.new.post');
+  Route::get('events/{eventId}/view', [EventController::class, 'getEventDetails'])->name('event.details');
+  Route::post('events/{eventId}', [EventController::class, 'updateEvent'])->name('event.update');
+});
 Route::post('events/{eventId}/join', [EventController::class, 'registerParticipant'])->name('event.join');
+
+
 
 Route::post('events/{eventId}/team/new', [App\Http\Controllers\EventController::class, 'createTeam'])->name('event.team.create');
 Route::post('events/{eventId}/team', [App\Http\Controllers\EventController::class, 'selectTeam'])->name('event.team.select');

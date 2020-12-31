@@ -59,7 +59,7 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
   public function register($input) 
   {
     $input['password'] = bcrypt($input['password']);
-    $user = User::create($input);
+    $user = $this->create($input);
     $result['token'] = $user->createToken('MyApp')->accessToken;
     $result['name'] = $user->name;
 

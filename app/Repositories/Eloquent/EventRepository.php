@@ -25,6 +25,15 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
   {
     return $this->model->all();
   }
+
+  public function createEvent($input)
+  {
+    // dd($input);
+    $event = $this->create($input);
+    $result['eventId'] = $event->id;
+
+    return $result;
+  }
 }
 
 ?>

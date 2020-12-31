@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 class EventController extends Controller
 {
 
+  public $successStatus = 200;
+
   /**
    * @var Event Service
    */
@@ -30,9 +32,21 @@ class EventController extends Controller
   /**
    * Return all events details
    */
-  public function getAllEvents()
+  public function getEventList()
   {
-    return Event::all();
+    $result = ['status' => $this->successStatus];
+
+    try
+    {
+      $result['data'] = $this->eventService->getEventList();
+    }
+    catch(Exception $e)
+    {
+      $result = [
+        'status' => 500,
+        'error' => $e->getMessage()
+      ];
+    }
   }
 
   /**
@@ -41,7 +55,7 @@ class EventController extends Controller
    * @param $request
    * @return \Illuminate\Http\RedirectResponse
    */
-  public function createNewEvent(Request $request)
+  public function createEvent(Request $request)
   {
     // die(print_r($request->input()));
     $data = $request->only([
@@ -63,7 +77,7 @@ class EventController extends Controller
 
     try 
     {
-      $result['data'] = $this->eventService->createNewEvent($data);
+      $result['data'] = $this->eventService->createEvent($data , $request->user()->id);
     }
     catch (Exception $e) 
     {
