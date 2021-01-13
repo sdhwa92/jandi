@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 
 interface EventRepositoryInterface
 {
-  public function all(): Collection;
+  public function all(): Array;
 
   public function createEvent($input);
 }

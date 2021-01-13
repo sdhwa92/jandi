@@ -32,9 +32,8 @@ class EventService
    */
   public function getEventList()
   {
-    $dump = $this->eventRepository->all();
-    dd($dump);
-    return $this->eventRepository->all();
+    $result = $this->eventRepository->all();
+    return $result;
   }
 
   /**

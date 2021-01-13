@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Http\Resources\Event as EventResource;
 use App\Models\Event;
 use App\Repositories\Interfaces\EventRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -19,11 +20,12 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
   }
 
   /**
-   * @return Collection
+   * return all events
    */
-  public function all(): Collection
+  public function all(): Array
   {
-    return $this->model->all();
+    $result = EventResource::collection($this->model->all());
+    return $result->resolve();
   }
 
   public function createEvent($input)

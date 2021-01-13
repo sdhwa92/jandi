@@ -31,6 +31,9 @@ class EventController extends Controller
 
   /**
    * Return all events details
+   * 
+   * @param Request $request
+   * @return \Illuminate\Http\Response
    */
   public function getEventList()
   {
@@ -47,6 +50,8 @@ class EventController extends Controller
         'error' => $e->getMessage()
       ];
     }
+
+    return response()->json($result, $result['status']);
   }
 
   /**
