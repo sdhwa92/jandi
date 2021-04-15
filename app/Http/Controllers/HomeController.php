@@ -24,7 +24,8 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $events = Event::skip(0)->take(10)->get();
+        // Get all events
+        $events = Event::get();
 
         // dd($events);
 

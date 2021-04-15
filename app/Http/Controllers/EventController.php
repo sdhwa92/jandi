@@ -115,18 +115,8 @@ class EventController extends Controller
     public function registerParticipant(Request $request)
     {
         $currentEventId = $request->eventId;
-
-        //-- 현재 참여 인원수를 구한 후 참여자 상태 결정
         $maxCount = 0;
-        $currentCount = count($this->_getEventParticipants($request->eventId));
-        $status = 1;
-        if ( !empty($this->_eventDetails->max_head) && $this->_eventDetails->max_head > 0)
-        {
-          $maxCount = $this->_eventDetails->max_head;
-          // dd($currentCount);
-
-          $status = $currentCount < $maxCount ? 1 : 2;
-        }
+        $status = self::STATUS['join']; // 1: 참가, 2: 대기
 
         //-- 이름이 입력되지 않았으면 에러 메세지
         if (empty($request->participantName))
@@ -136,30 +126,73 @@ class EventController extends Controller
 
           return redirect()->route('event.view', [$currentEventId]);
         }
+
+        //-- Check bulk add
+        $participantInput = $request->participantName;
+        $participantsArray = explode("|", $participantInput);
+        if (count($participantsArray) > 1) 
+        {
+          //-- 만약 벌크 인풋일경우
+          foreach($participantsArray as $value) 
+          {
+            //-- 현재 참여 인원수를 구한 후 참여자 상태 결정
+            $currentCount = count($this->_getEventParticipants($request->eventId));
+
+            if ( !empty($this->_eventDetails->max_head) && $this->_eventDetails->max_head > 0)
+            {
+              $maxCount = $this->_eventDetails->max_head;
+              $status = $currentCount < $maxCount ? self::STATUS['join'] : self::STATUS['waiting'];
+            }
+
+            $participant = new Participant();
+            $participant->event_id = $currentEventId;
+            $participant->name = $value;
+            $participant->status_id = $status;
+
+            // dd($status);
+            if(!$participant->save())
+            {
+              abort(500, 'Error');
+            }
+          }
+        }
+        else 
+        {
+          //-- 현재 참여 인원수를 구한 후 참여자 상태 결정
+          $currentCount = count($this->_getEventParticipants($request->eventId));
+          
+          if ( !empty($this->_eventDetails->max_head) && $this->_eventDetails->max_head > 0)
+          {
+            $maxCount = $this->_eventDetails->max_head;
+            $status = $currentCount < $maxCount ? self::STATUS['join'] : self::STATUS['waiting'];
+          }
+          
+          // dd($currentEventId);
+          $participant = new Participant();
+
+          $participant->event_id = $currentEventId;
+          $participant->name = $request->participantName;
+          $participant->status_id = $status;
+
+          // dd($status);
+          if(!$participant->save())
+          {
+            abort(500, 'Error');
+          }
+
+          if ($status == 1) 
+          {
+            $request->session()->flash('message.level', 'success');
+            $request->session()->flash('message.content', '"' .$request->participantName . '"' . ' 님이 추가 되었습니다.');
+          }
+          elseif ($status == 2) 
+          {
+            $request->session()->flash('message.level', 'warning');
+            $request->session()->flash('message.content', '인원 초과로 인해 "' .$request->participantName . '"' . ' 님이 대기 명단에 추가 되었습니다.');
+          }
+        }
         
-        // dd($currentEventId);
-        $participant = new Participant();
-
-        $participant->event_id = $currentEventId;
-        $participant->name = $request->participantName;
-        $participant->status_id = $status;
-
-        // dd($status);
-        if(!$participant->save())
-        {
-          abort(500, 'Error');
-        }
-
-        if ($status == 1) 
-        {
-          $request->session()->flash('message.level', 'success');
-          $request->session()->flash('message.content', '"' .$request->participantName . '"' . ' 님이 추가 되었습니다.');
-        }
-        elseif ($status == 2) 
-        {
-          $request->session()->flash('message.level', 'warning');
-          $request->session()->flash('message.content', '인원 초과로 인해 "' .$request->participantName . '"' . ' 님이 대기 명단에 추가 되었습니다.');
-        }
+        
         
         return redirect()->route('event.view', [$currentEventId]);
     }
@@ -186,9 +219,9 @@ class EventController extends Controller
 
         foreach ($joinMembers as $member) 
         {
-          if ($member->status_id == 2)
+          if ($member->status_id == self::STATUS['waiting'])
           {
-            if (!Participant::find($member->id)->update(['status_id' => 1]))
+            if (!Participant::find($member->id)->update(['status_id' => self::STATUS['join']]))
             {
               abort(500, 'Error');
             }
@@ -208,12 +241,33 @@ class EventController extends Controller
      */
     public function createTeam(Request $request, $eventId)
     {
-      $team = new Team();
-      $team->team_name = $request->teamName;
-      $team->event_id = $eventId;
+      //-- Check bulk add
+      $teamInput = $request->teamName;
+      $teamArray = explode("|", $teamInput);
 
-      if(!$team->save()){
-        abort(500, 'Error');
+      if (count($teamArray) > 1)
+      {
+        //-- If team input array is more than 1, bulk add
+        foreach($teamArray as $value) 
+        {
+          $team = new Team();
+          $team->team_name = $value;
+          $team->event_id = $eventId;
+
+          if(!$team->save()){
+            abort(500, 'Error');
+          }
+        }
+      }
+      else 
+      {
+        $team = new Team();
+        $team->team_name = $request->teamName;
+        $team->event_id = $eventId;
+
+        if(!$team->save()){
+          abort(500, 'Error');
+        }
       }
 
       return redirect()->route('event.view', [$eventId]);
@@ -249,9 +303,10 @@ class EventController extends Controller
     public function randomSelectTeam(Request $request) 
     { 
       $joinMembers = $this->_getEventParticipants($request->eventId, self::STATUS['join']);
+      $shuffledMembers = $joinMembers->shuffle();
 
       // 참가하는 멤버중 팀이 없으면 랜텀 선택
-      foreach($joinMembers as $member)
+      foreach($shuffledMembers as $member)
       {
         if (empty($member->team_id)) 
         {
